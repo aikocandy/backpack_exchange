@@ -49,10 +49,35 @@ function countDecimalPlaces(number) {
     return decimalPart ? decimalPart[1].length : 0;
 }
 
+let wenUsdcLastTicker = ""
+let wenUsdcLastTimestamp = 0
+
+function initWsTrade(){
+    const WebSocket = require('ws');
+
+    var ws = new WebSocket('wss://ws.backpack.exchange/');
+    ws.on('open', function() {
+        ws.send('{"method": "SUBSCRIBE","params": ["trade.WEN_USDC"]}');
+    });
+    ws.on('message', function(data, flags) {
+        // flags.binary will be set if a binary data is received
+        // flags.masked will be set if the data was masked
+        // console.log(data, flags)
+    
+        let dataParsed = JSON.parse(data.toString())
+        wenUsdcLastTicker = dataParsed.data.p.toString()
+        wenUsdcLastTimestamp = dataParsed.data.E
+
+        // console.log(Object.keys(dataParsed))
+    });
+    
+}
+
 let successbuy = 0;
 let sellbuy = 0;
 
 const init = async (client, token, random, money) => {
+    initWsTrade();
     let markets = await client.Markets();
     let tokensDecimal = {};
     //token 最小交易小数位
@@ -104,6 +129,7 @@ const init = async (client, token, random, money) => {
 
 
 const sellfun = async (client, token, money, tokensDecimal) => {
+    console.log("its sell time")
     //取消所有未完成订单
     let GetOpenOrders = await client.GetOpenOrders({ symbol: token });
     if (GetOpenOrders.length > 0) {
@@ -145,6 +171,7 @@ const sellfun = async (client, token, money, tokensDecimal) => {
 
 // 挂单。通过money变量的比例用USDC买入token
 const buyfun = async (client, token, money, tokensDecimal) => {
+    console.log("its buy time")
     //取消所有未完成订单
     let GetOpenOrders = await client.GetOpenOrders({ symbol: token });
     if (GetOpenOrders.length > 0) {
@@ -165,9 +192,20 @@ const buyfun = async (client, token, money, tokensDecimal) => {
     console.log(token,'小数位',tokensDecimal[token]);
     console.log(getNowFormatDate(), `正在买入中... 花${(PayUSDC).toFixed(tokensDecimal[token]).toString()}个USDC买${token}`);
     let quantitys = ((PayUSDC) / lastPrice).toFixed(tokensDecimal[token]).toString();
+
+    let finalLastPrice = ""
+    if(wenUsdcLastTicker == "") {
+        finalLastPrice = lastPrice
+    }else {
+        finalLastPrice = wenUsdcLastTicker
+    }
+
+    console.log(finalLastPrice)
+    console.log(getNowFormatDate(), "" + token + "的市场当前价格(final):", finalLastPrice);
+
     let orderResultBid = await client.ExecuteOrder({
         orderType: "Limit",
-        price: lastPrice.toString(),
+        price: finalLastPrice, 
         quantity: quantitys,
         side: "Bid", //买
         symbol: token,
