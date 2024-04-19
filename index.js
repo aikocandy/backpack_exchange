@@ -60,7 +60,7 @@ function initWsTrade() {
 
     var ws = new WebSocket('wss://ws.backpack.exchange/');
     ws.on('open', function () {
-        ws.send('{"method": "SUBSCRIBE","params": ["trade.WEN_USDC"]}');
+        ws.send('{"method": "SUBSCRIBE","params": ["trade.PRCL_USDC"]}');
     });
     ws.on('message', function (data, flags) {
         // flags.binary will be set if a binary data is received
