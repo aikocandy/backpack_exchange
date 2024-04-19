@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const backpack_client_1 = require("./backpack_client");
 const { checkbox, input } = require('@inquirer/prompts');
 const { tokenList } = require('./token');
+const fs = require('fs');
+const Util = require('./util.js')
+
 function delay(ms) {
     return new Promise(resolve => {
         setTimeout(resolve, ms);
@@ -52,25 +55,25 @@ function countDecimalPlaces(number) {
 let wenUsdcLastTicker = ""
 let wenUsdcLastTimestamp = 0
 
-function initWsTrade(){
+function initWsTrade() {
     const WebSocket = require('ws');
 
     var ws = new WebSocket('wss://ws.backpack.exchange/');
-    ws.on('open', function() {
+    ws.on('open', function () {
         ws.send('{"method": "SUBSCRIBE","params": ["trade.WEN_USDC"]}');
     });
-    ws.on('message', function(data, flags) {
+    ws.on('message', function (data, flags) {
         // flags.binary will be set if a binary data is received
         // flags.masked will be set if the data was masked
         // console.log(data, flags)
-    
+
         let dataParsed = JSON.parse(data.toString())
         wenUsdcLastTicker = dataParsed.data.p.toString()
         wenUsdcLastTimestamp = dataParsed.data.E
 
         // console.log(Object.keys(dataParsed))
     });
-    
+
 }
 
 let successbuy = 0;
@@ -93,7 +96,7 @@ const init = async (client, token, random, money) => {
 
             console.log(`成功买入次数:${successbuy},成功卖出次数:${sellbuy}`);
             console.log(getNowFormatDate(), `等待${random[randomIndex]}秒...`);
-            await delay(random[randomIndex]*1000);
+            await delay(random[randomIndex] * 1000);
             console.log(getNowFormatDate(), "正在获取账户信息中...");
             let userbalance = await client.Balance();
             let tokenPriceList = await client.Tickers();
@@ -108,7 +111,7 @@ const init = async (client, token, random, money) => {
             })
             //当前账号价值最大的币种名字 跳过symbol为USDC的币种
             let maxToken = Object.keys(userbalance).filter((item) => item != 'USDC' && token.includes(`${item}_USDC`)).reduce((a, b) => userbalance[a].value > userbalance[b].value ? a : b);
-            console.log('账号价值最大的币种',maxToken);
+            console.log('账号价值最大的币种', maxToken);
             let condition1 = maxToken == "USDC" ? true : userbalance[maxToken].value < 8;
             //判断账号USDC余额是否大于5以及购买的币种余额是否小于5USDC
             if (userbalance.USDC.available > 5 && condition1) {
@@ -157,7 +160,7 @@ const sellfun = async (client, token, money, tokensDecimal) => {
         side: "Ask", //卖
         symbol: token
     })
-    
+
     if (orderResultAsk?.status == "Filled" && orderResultAsk?.side == "Ask") {
         console.log(getNowFormatDate(), "卖出成功");
         sellbuy += 1;
@@ -189,14 +192,14 @@ const buyfun = async (client, token, money, tokensDecimal) => {
     //获取当前
     let { lastPrice } = await client.Ticker({ symbol: token });
     console.log(getNowFormatDate(), "" + token + "的市场当前价格:", lastPrice);
-    console.log(token,'小数位',tokensDecimal[token]);
+    console.log(token, '小数位', tokensDecimal[token]);
     console.log(getNowFormatDate(), `正在买入中... 花${(PayUSDC).toFixed(tokensDecimal[token]).toString()}个USDC买${token}`);
     let quantitys = ((PayUSDC) / lastPrice).toFixed(tokensDecimal[token]).toString();
 
     let finalLastPrice = ""
-    if(wenUsdcLastTicker == "") {
+    if (wenUsdcLastTicker == "") {
         finalLastPrice = lastPrice
-    }else {
+    } else {
         finalLastPrice = wenUsdcLastTicker
     }
 
@@ -205,7 +208,7 @@ const buyfun = async (client, token, money, tokensDecimal) => {
 
     let orderResultBid = await client.ExecuteOrder({
         orderType: "Limit",
-        price: finalLastPrice, 
+        price: finalLastPrice,
         quantity: quantitys,
         side: "Bid", //买
         symbol: token,
@@ -268,8 +271,25 @@ const buyfun = async (client, token, money, tokensDecimal) => {
     let moneyAnserArr = moneyAnser.split('-').map(s => parseInt(s, 10));
     moneyAnserArr = Array.from({ length: moneyAnserArr[1] - moneyAnserArr[0] + 1 }, (_, index) => index + moneyAnserArr[0]);
 
-    const apisecret = "";
-    const apikey = "";
+    /**
+     * create ./credential.json file like below
+     * {
+     *     "api_key": "apikey goes here",
+     *     "api_secret": "api secret goes here"
+     * }
+     */
+    const credBuffer = fs.readFileSync('./credential.json');
+    const credJson = JSON.parse(credBuffer);
+
+    if (Util.isEmptyOrBlank(credJson.api_key) || Util.isEmptyOrBlank(credJson.api_secret)) {
+        throw new Error(`api_key and api_sercet cannot be null! ${JSON.stringify(credJson)}`)
+    }
+
+    const apikey = credJson.api_key;
+    const apisecret = credJson.api_secret;
+
     const client = new backpack_client_1.BackpackClient(apisecret, apikey);
     init(client, tokenAnswer, randomAnserArr, moneyAnserArr);
 })();
+
+
