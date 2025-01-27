@@ -14,6 +14,11 @@ const tokenList = {
             description: 'SOL_USDC',
         },
         {
+            name: 'SONIC_USDC',
+            value: 'SONIC_USDC',
+            description: 'SONIC_USDC',
+        },
+        {
             name: 'PRCL_USDC',
             value: 'PRCL_USDC',
             description: 'PRCL_USDC',

@@ -60,7 +60,7 @@ function initWsTrade() {
 
     var ws = new WebSocket('wss://ws.backpack.exchange/');
     ws.on('open', function () {
-        ws.send('{"method": "SUBSCRIBE","params": ["trade.PRCL_USDC"]}');
+        ws.send('{"method": "SUBSCRIBE","params": ["trade.SONIC_USDC"]}');
     });
     ws.on('message', function (data, flags) {
         // flags.binary will be set if a binary data is received
@@ -101,6 +101,7 @@ const init = async (client, token, random, money) => {
             let userbalance = await client.Balance();
             let tokenPriceList = await client.Tickers();
             Object.keys(userbalance).map((item) => {
+                if (item == 'NYAN') { return; }
                 if (item == 'USDC') {
                     userbalance[item].value = userbalance[item].available;
                     userbalance[item].symbol = `USDC`;
